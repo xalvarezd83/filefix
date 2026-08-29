@@ -1,0 +1,263 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Plan {
+  FREE
+  PRO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+  UNPAID
+}
+
+enum FileStatus {
+  UPLOADED
+  PROCESSING
+  VALID
+  INVALID
+  FAILED
+}
+
+enum StorageProvider {
+  S3
+  R2
+}
+
+enum ValidationRunStatus {
+  QUEUED
+  RUNNING
+  PASSED
+  FAILED
+  ERROR
+}
+
+enum RuleSeverity {
+  ERROR
+  WARNING
+}
+
+enum ValidationRuleType {
+  REQUIRED
+  DATA_TYPE
+  EMAIL
+  DATE
+  REGEX
+  UNIQUE
+  ALLOWED_VALUES
+  RANGE
+  LENGTH
+  CUSTOM
+}
+
+model User {
+  id                 String              @id @default(cuid())
+  name               String?
+  email              String              @unique
+  passwordHash       String?
+  image              String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  subscription       Subscription?
+  files              File[]
+  projects            ProjectMember[]
+  templates           ValidationTemplate[]
+  validationRuns      ValidationRun[]
+  chatConversations   ChatConversation[]
+  auditEvents         AuditEvent[]
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String             @unique
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan                 Plan               @default(FREE)
+  status               SubscriptionStatus @default(ACTIVE)
+  stripeCustomerId     String?            @unique
+  stripeSubscriptionId String?            @unique
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+}
+
+model Project {
+  id          String           @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  members     ProjectMember[]
+  files       File[]
+  templates   ValidationTemplate[]
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  role      String   @default("OWNER")
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@unique([projectId, userId])
+  @@index([userId])
+}
+
+model File {
+  id                String            @id @default(cuid())
+  userId            String
+  projectId         String?
+  originalName      String
+  objectKey         String            @unique
+  storageProvider   StorageProvider
+  mimeType          String
+  sizeBytes         BigInt
+  checksumSha256    String?
+  status            FileStatus        @default(UPLOADED)
+  rowCount          Int?
+  sheetCount        Int?
+  uploadedAt        DateTime          @default(now())
+  processedAt       DateTime?
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project           Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  validationRuns    ValidationRun[]
+  chatSources       ChatSource[]
+  auditEvents       AuditEvent[]
+  @@index([userId, uploadedAt])
+}
+
+model ValidationTemplate {
+  id          String            @id @default(cuid())
+  userId      String
+  projectId   String?
+  name        String
+  description String?
+  version     Int               @default(1)
+  isActive    Boolean           @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project     Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  rules       ValidationRule[]
+  runs        ValidationRun[]
+  @@index([userId, isActive])
+}
+
+model ValidationRule {
+  id          String             @id @default(cuid())
+  templateId  String
+  fieldName   String
+  ruleType    ValidationRuleType
+  severity    RuleSeverity       @default(ERROR)
+  parameters  Json?
+  message     String?
+  sortOrder   Int                @default(0)
+  createdAt   DateTime           @default(now())
+  template    ValidationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  errors      ValidationError[]
+  @@index([templateId, sortOrder])
+}
+
+model ValidationRun {
+  id              String              @id @default(cuid())
+  userId          String
+  fileId          String
+  templateId      String?
+  status          ValidationRunStatus  @default(QUEUED)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  totalRows       Int?
+  validRows       Int?
+  invalidRows     Int?
+  errorCount      Int                 @default(0)
+  warningCount    Int                 @default(0)
+  reportObjectKey String?
+  cleanObjectKey  String?
+  summary         Json?
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  file            File                @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  template        ValidationTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  errors          ValidationError[]
+  @@index([userId, createdAt])
+  createdAt       DateTime            @default(now())
+}
+
+model ValidationError {
+  id            String        @id @default(cuid())
+  runId         String
+  ruleId        String?
+  sheetName     String?
+  rowNumber     Int?
+  columnName    String?
+  valuePreview  String?
+  message       String
+  severity      RuleSeverity  @default(ERROR)
+  createdAt     DateTime      @default(now())
+  run           ValidationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  rule          ValidationRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  @@index([runId, rowNumber])
+}
+
+model ChatConversation {
+  id        String        @id @default(cuid())
+  userId    String
+  title     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  ChatMessage[]
+  sources   ChatSource[]
+}
+
+model ChatMessage {
+  id             String           @id @default(cuid())
+  conversationId String
+  role           String
+  content        String
+  createdAt      DateTime         @default(now())
+  conversation  ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  @@index([conversationId, createdAt])
+}
+
+model ChatSource {
+  id             String           @id @default(cuid())
+  conversationId String
+  fileId         String
+  createdAt      DateTime         @default(now())
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  file           File             @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  @@unique([conversationId, fileId])
+}
+
+model UsageEvent {
+  id          String   @id @default(cuid())
+  userId      String
+  eventType   String
+  quantity    Int      @default(1)
+  metadata    Json?
+  occurredAt  DateTime @default(now())
+  @@index([userId, occurredAt])
+}
+
+model AuditEvent {
+  id         String   @id @default(cuid())
+  userId     String?
+  fileId     String?
+  action     String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  file       File?    @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  @@index([userId, createdAt])
+}
