@@ -131,14 +131,14 @@ export function RegisterForm() {
           {error}
         </div>
       )}
-
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full rounded-xl bg-black py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {loading ? "Creating account..." : "Create account"}
-      </button>
+<button
+  type="button"
+  onClick={() => alert("BUTTON WORKS")}
+  className="w-full rounded-xl bg-black py-2.5 text-sm font-medium text-white"
+>
+  Create account
+</button>
+      
     </form>
   );
 }
