@@ -13,14 +13,17 @@ export function RegisterForm() {
 
   const router = useRouter();
 
-  async function submit(e: FormEvent) {
+  async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    console.log("CREATE ACCOUNT CLICKED");
+
     setError("");
     setLoading(true);
 
     try {
-      // Create the user
-      const r = await fetch("/api/register", {
+      // Create account
+      const response = await fetch("/api/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -32,30 +35,40 @@ export function RegisterForm() {
         }),
       });
 
-      const d = await r.json();
+      console.log("REGISTER RESPONSE:", response.status);
 
-      if (!r.ok) {
-        setError(d.error || "Could not create account.");
+      const data = await response.json();
+
+      console.log("REGISTER DATA:", data);
+
+      if (!response.ok) {
+        setError(data.error || "Could not create account.");
         return;
       }
 
-      // Automatically log the new user in
+      // Automatically sign in after registration
+      console.log("ACCOUNT CREATED - SIGNING IN");
+
       const login = await signIn("credentials", {
         email,
         password,
         redirect: false,
       });
 
+      console.log("LOGIN RESULT:", login);
+
       if (login?.error) {
-        setError(login.error);
+        setError(
+          "Account was created, but automatic login failed. Please log in manually."
+        );
         return;
       }
 
       // Go to dashboard
       router.push("/dashboard");
       router.refresh();
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error("REGISTER ERROR:", error);
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
@@ -65,51 +78,64 @@ export function RegisterForm() {
   return (
     <form onSubmit={submit} className="space-y-4">
       <label className="block text-sm">
-        <span className="mb-2 block font-medium">Name</span>
+        <span className="mb-2 block font-medium">
+          Name
+        </span>
 
         <input
+          type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
-          className="w-full rounded-xl border border-gray-200 px-3 py-2.5"
+          autoComplete="name"
+          placeholder="Your name"
+          className="w-full rounded-xl border border-gray-200 px-3 py-2.5 outline-none focus:border-gray-400"
         />
       </label>
 
       <label className="block text-sm">
-        <span className="mb-2 block font-medium">Email</span>
+        <span className="mb-2 block font-medium">
+          Email
+        </span>
 
         <input
+          type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          type="email"
           required
-          className="w-full rounded-xl border border-gray-200 px-3 py-2.5"
+          autoComplete="email"
+          placeholder="you@example.com"
+          className="w-full rounded-xl border border-gray-200 px-3 py-2.5 outline-none focus:border-gray-400"
         />
       </label>
 
       <label className="block text-sm">
-        <span className="mb-2 block font-medium">Password</span>
+        <span className="mb-2 block font-medium">
+          Password
+        </span>
 
         <input
+          type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          type="password"
-          minLength={8}
           required
-          className="w-full rounded-xl border border-gray-200 px-3 py-2.5"
+          minLength={8}
+          autoComplete="new-password"
+          placeholder="At least 8 characters"
+          className="w-full rounded-xl border border-gray-200 px-3 py-2.5 outline-none focus:border-gray-400"
         />
       </label>
 
       {error && (
-        <p className="text-sm text-red-600">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-600">
           {error}
-        </p>
+        </div>
       )}
 
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-xl bg-black py-2.5 text-sm font-medium text-white disabled:opacity-50"
+        className="w-full rounded-xl bg-black py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {loading ? "Creating account..." : "Create account"}
       </button>
