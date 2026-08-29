@@ -7,7 +7,7 @@ import { UploadBox } from "@/components/upload-box";
 
 export default async function Dashboard() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  //if (!session?.user?.id) redirect("/login");
   const [sub, files] = await Promise.all([
     db.subscription.findUnique({ where: { userId: session.user.id } }),
     db.file.findMany({ where: { userId: session.user.id }, orderBy: { uploadedAt: "desc" }, take: 8 })
