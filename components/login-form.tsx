@@ -2,7 +2,6 @@
 
 import { FormEvent, useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -10,10 +9,10 @@ export function LoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const router = useRouter();
-
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    alert("LOGIN BUTTON WORKS");
 
     setError("");
     setLoading(true);
@@ -32,9 +31,9 @@ export function LoginForm() {
         return;
       }
 
-      // Force Next.js to recognize the new authenticated session.
-      router.replace("/dashboard");
-      router.refresh();
+      // Use a full browser navigation so the new
+      // NextAuth session is definitely available.
+      window.location.href = "/dashboard";
     } catch (err) {
       console.error("LOGIN ERROR:", err);
       setError("Unable to log in. Please try again.");
@@ -45,15 +44,17 @@ export function LoginForm() {
 
   return (
     <form onSubmit={submit} className="space-y-4">
+
+      {/* Email */}
       <label className="block text-sm">
         <span className="mb-2 block font-medium">
           Email
         </span>
 
         <input
+          type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          type="email"
           required
           autoComplete="email"
           disabled={loading}
@@ -61,15 +62,16 @@ export function LoginForm() {
         />
       </label>
 
+      {/* Password */}
       <label className="block text-sm">
         <span className="mb-2 block font-medium">
           Password
         </span>
 
         <input
+          type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          type="password"
           required
           autoComplete="current-password"
           disabled={loading}
@@ -77,12 +79,14 @@ export function LoginForm() {
         />
       </label>
 
+      {/* Error */}
       {error && (
         <p className="text-sm text-red-600">
           {error}
         </p>
       )}
 
+      {/* Login */}
       <button
         type="submit"
         disabled={loading}
@@ -90,6 +94,7 @@ export function LoginForm() {
       >
         {loading ? "Logging in..." : "Log in"}
       </button>
+
     </form>
   );
 }
