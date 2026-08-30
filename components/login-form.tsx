@@ -12,7 +12,7 @@ export function LoginForm() {
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    alert("LOGIN BUTTON WORKS");
+    console.log("LOGIN SUBMIT FIRED");
 
     setError("");
     setLoading(true);
@@ -26,17 +26,20 @@ export function LoginForm() {
 
       console.log("LOGIN RESULT:", result);
 
-      if (!result || result.error) {
+      if (result?.error) {
         setError("Invalid email or password.");
         return;
       }
 
-      // Use a full browser navigation so the new
-      // NextAuth session is definitely available.
-      window.location.href = "/dashboard";
-    } catch (err) {
-      console.error("LOGIN ERROR:", err);
-      setError("Unable to log in. Please try again.");
+      if (result?.ok) {
+        window.location.href = "/dashboard";
+        return;
+      }
+
+      setError("Login failed. Please try again.");
+    } catch (error) {
+      console.error("LOGIN ERROR:", error);
+      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -44,8 +47,6 @@ export function LoginForm() {
 
   return (
     <form onSubmit={submit} className="space-y-4">
-
-      {/* Email */}
       <label className="block text-sm">
         <span className="mb-2 block font-medium">
           Email
@@ -57,12 +58,10 @@ export function LoginForm() {
           onChange={(e) => setEmail(e.target.value)}
           required
           autoComplete="email"
-          disabled={loading}
           className="w-full rounded-xl border border-gray-200 px-3 py-2.5 outline-none focus:border-gray-500"
         />
       </label>
 
-      {/* Password */}
       <label className="block text-sm">
         <span className="mb-2 block font-medium">
           Password
@@ -74,27 +73,23 @@ export function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           required
           autoComplete="current-password"
-          disabled={loading}
           className="w-full rounded-xl border border-gray-200 px-3 py-2.5 outline-none focus:border-gray-500"
         />
       </label>
 
-      {/* Error */}
       {error && (
         <p className="text-sm text-red-600">
           {error}
         </p>
       )}
 
-      {/* Login */}
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-xl bg-black py-2.5 text-sm font-medium text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full rounded-xl bg-black py-2.5 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
       >
         {loading ? "Logging in..." : "Log in"}
       </button>
-
     </form>
   );
 }
